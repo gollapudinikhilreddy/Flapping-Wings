@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flappy Bird</title>
+    <style>
+        body {
+            text-align: center;
+            background-color: skyblue;
+            font-family: Arial, sans-serif;
+            overflow: auto; /* Allow scrolling */
+            height: 100vh;
+        }
+        canvas {
+            background: url('flappybirdbg.webp');
+            display: block;
+            margin: auto;
+        }
+        #gameOverContainer {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+        }
+        #gameOverText {
+            color: white;
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+        #restartButton {
+            padding: 10px 20px;
+            font-size: 18px;
+            background-color: red;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        #startContainer {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        #startButton {
+            padding: 15px 30px;
+            font-size: 20px;
+            background-color: green;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Flappy Bird</h1>
+    <canvas id="gameCanvas" width="360" height="640"></canvas>
+
+    <!-- Start Button -->
+    <div id="startContainer">
+        <button id="startButton" onclick="startGame()">Start Game</button>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameOverContainer">
+        <div id="gameOverText">Game Over</div>
+        <button id="restartButton" onclick="restartGame()">Restart</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const gameOverContainer = document.getElementById("gameOverContainer");
+
+        const birdImg = new Image();
+        birdImg.src = "flappybird.png";
+
+        const topPipeImg = new Image();
+        topPipeImg.src = "toppipe.png";
+
+        const bottomPipeImg = new Image();
+        bottomPipeImg.src = "bottompipe.png";
+
+        let bird, pipes, score, gameOver, pipeInterval;
+
+        function initGame() {
+            bird = { x: 50, y: 150, width: 34, height: 24, velocityY: 0, gravity: 0.5 };
+            pipes = [];
+            score = 0;
+            gameOver = false;
+            gameOverContainer.style.display = "none";
+            document.getElementById("startContainer").style.display = "block";
+        }
+
+        function startGame() {
+            document.getElementById("startContainer").style.display = "none"; 
+            pipes = []; 
+            pipeInterval = setInterval(generatePipes, 2000); 
+            updateGame(); 
+        }
+
+        function drawBird() {
+            ctx.drawImage(birdImg, bird.x, bird.y, bird.width, bird.height);
+        }
+
+        function drawPipes() {
+            pipes.forEach(pipe => {
+                ctx.save(); 
+                ctx.drawImage(pipe.img, pipe.x, pipe.y, pipe.width, pipe.height);
+                ctx.globalCompositeOperation = "source-atop"; 
+                ctx.fillStyle = "rgba(255, 0, 0, 0.5)";
+                ctx.fillRect(pipe.x, pipe.y, pipe.width, pipe.height);
+                ctx.globalCompositeOperation = "source-over";
+                ctx.restore(); 
+            });
+        }
+
+        function moveBird() {
+            bird.velocityY += bird.gravity;
+            bird.y += bird.velocityY;
+            if (bird.y > canvas.height) gameOver = true;
+        }
+
+        function generatePipes() {
+            let gap = 100; 
+            let minPipeHeight = 50;
+            let maxPipeHeight = canvas.height - gap - minPipeHeight;
+            let pipeHeight = Math.random() * (maxPipeHeight - minPipeHeight) + minPipeHeight;
+            let pipeX = canvas.width + 100; 
+
+            pipes.push({
+                x: pipeX,
+                y: 0,
+                width: 64,
+                height: pipeHeight,
+                img: topPipeImg
+            });
+
+            pipes.push({
+                x: pipeX,
+                y: pipeHeight + gap,
+                width: 64,
+                height: canvas.height - (pipeHeight + gap),
+                img: bottomPipeImg
+            });
+        }
+
+        function movePipes() {
+            pipes.forEach((pipe, index) => {
+                pipe.x -= 2;
+                if (index % 2 === 0 && bird.x > pipe.x + pipe.width && !pipe.passed) {
+                    score++; 
+                    pipe.passed = true;
+                }
+                if (checkCollision(bird, pipe)) gameOver = true;
+            });
+            pipes = pipes.filter(pipe => pipe.x + pipe.width > 0);
+        }
+
+        function checkCollision(bird, pipe) {
+            return bird.x < pipe.x + pipe.width &&
+                   bird.x + bird.width > pipe.x &&
+                   bird.y < pipe.y + pipe.height &&
+                   bird.y + bird.height > pipe.y;
+        }
+
+        function updateGame() {
+            if (!gameOver) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                moveBird();
+                movePipes();
+                drawBird();
+                drawPipes();
+                ctx.fillStyle = "white";
+                ctx.font = "24px Arial";
+                ctx.fillText("Score: " + score, 10, 30);
+                requestAnimationFrame(updateGame);
+            } else {
+                gameOverContainer.style.display = "block";
+            }
+        }
+
+        function restartGame() {
+            clearInterval(pipeInterval);
+            initGame();
+            startGame(); 
+        }
+
+        document.addEventListener("keydown", function(event) {
+            if (event.code === "Space" && !gameOver) {
+                bird.velocityY = -7;
+            }
+        });
+
+        document.addEventListener("touchstart", function() {
+            if (!gameOver) {
+                bird.velocityY = -7;
+            }
+        });
+
+        window.onload = initGame;
+    </script>
+</body>
+</html>
